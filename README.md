@@ -1,115 +1,98 @@
 # AiriBrain — Evidence-Backed $100K Decisions in 24 Hours
 
-**Our entry for Hackathon Challenge 2, "The VC Brain" (sponsored by Maschmeyer Group)**
+**Hackathon Challenge 2: “The VC Brain” (Maschmeyer Group)**
 
-Logo & brand assets live in `branding/` (SVG + PNG, icon and full wordmark).
+AiriBrain turns early-stage diligence into a fast, auditable workflow. A founder
+uploads their data room; the system extracts every checkable claim, verifies it
+against the numbers and the open web, scores the deal the way an investment
+committee would, and produces a memo where every conclusion traces back to a
+source.
 
-AiriBrain compresses weeks of early-stage diligence into a repeatable, auditable pipeline.
-A founder submits their materials; the system extracts every checkable claim, hunts for
-evidence, scores the deal across the dimensions a real IC debates, and produces a signed
-invest/pass memo — with every number traced back to a source.
+Our starting point as an accounting and tax AI team: **slow VC decisions are
+usually a verification problem, not a reasoning problem.** AiriBrain is built
+like an audit engine — not a deck summarizer.
 
-The core thesis (and our unfair advantage as an accounting & tax AI team): **the reason
-VC decisions take weeks isn't reasoning speed — it's verification.** So VC Brain is built
-like an audit engine, not a chatbot.
+Brand assets: [`branding/`](branding/) (icon + wordmark, SVG and PNG).
 
-## Why this wins
+## What makes it different
 
-Most "AI VC" demos are an LLM summarizing a pitch deck. That's a vibes machine — it
-inherits every exaggeration in the deck. AiriBrain treats the deck as a set of **assertions
-to be audited**:
+Most AI investment tools summarize the pitch. The pitch is marketing, so the
+summary inherits every exaggeration. AiriBrain treats the materials as
+**claims to verify**:
 
-1. Every quantitative claim is extracted and typed (revenue, growth, retention, market size, team).
-2. Each claim gets an **evidence status**: `verified`, `corroborated`, `unsupported`, or `contradicted`.
-3. Scoring is an **LLM IC partner** grounded in the evidence table — Claude weighs the audited
-   but the final score comes from a transparent weighted model anyone can inspect.
-4. The output memo shows its work: claim → evidence → adjustment. An associate (or the
-   founder) can challenge any single line.
+1. Pull out every checkable assertion — revenue, growth, retention, market size, team.
+2. Grade each one: verified, corroborated, unsupported, or contradicted.
+3. Score the deal with Claude as an IC partner, grounded in that evidence table —
+   with clear decision bands (invest / invest with conditions / decline).
+4. Ship a memo you can challenge line by line: claim → evidence → impact on the score.
 
-That's what "evidence-backed" actually means, and it's the difference between a demo and
-an underwriting system.
+That’s what “evidence-backed” means in practice.
 
-## Pipeline architecture
+## How it works
 
 ```
- founder materials (deck text, metrics CSV, data room docs, URLs)
+ founder data room (deck, financials, Q&A)
         │
         ▼
  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
  │ 1. INGEST    │ → │ 2. CLAIMS    │ → │ 3. EVIDENCE  │ → │ 4. SCORING   │ → │ 5. MEMO      │
- │ normalize    │   │ extract &    │   │ verify each  │   │ deterministic│   │ decision +   │
- │ all inputs   │   │ type claims  │   │ claim, grade │   │ weighted     │   │ audit trail  │
- │ to one doc   │   │ (LLM)        │   │ (LLM + web + │   │ (LLM IC      │   │ (JSON + HTML │
- │ bundle       │   │              │   │ financial    │   │ partner;     │   │ dashboard)   │
- │              │   │              │   │ recompute)   │   │ mock=rules)  │   │              │
+ │ load the     │   │ extract      │   │ verify each  │   │ IC score     │   │ decision +   │
+ │ data room    │   │ checkable    │   │ claim        │   │ + rationale  │   │ audit trail  │
+ │              │   │ assertions   │   │              │   │              │   │              │
  └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
 ```
 
-### Stage details
+**1. Ingest** — Accepts a data room: pitch deck (PDF or text), financials
+(Excel / CSV), headline metrics, and optional founder Q&A. Everything is
+normalized into one working set for the rest of the pipeline.
 
-**1. Ingest** (`vcbrain/ingest.py`) — Accepts a submission folder: `deck.md` (or extracted
-deck text), `metrics.json`/`metrics.csv`, optional `financials.csv`, founder Q&A. Normalizes
-into a single `Submission` object. In a production build this stage also pulls Crunchbase /
-LinkedIn / app-store / GitHub signals.
+**2. Claim extraction** — Identifies every assertion that evidence could confirm
+or refute, and tags it by theme (traction, market, team, product, financials,
+competition), including where it came from in the materials.
 
-**2. Claim extraction** (`vcbrain/claims.py`) — LLM pass that pulls out every *checkable*
-assertion and types it: `traction`, `market`, `team`, `product`, `financial`, `competition`.
-Each claim records where it came from (provenance).
+**3. Evidence engine** — Two layers:
+- **Numbers first:** recompute what’s recomputable (e.g. claimed MoM growth vs. the
+  submitted revenue series) and cross-check stated figures against the founder’s
+  own metrics. Arithmetic is never overturned later.
+- **Open-world second (live mode):** claims the rules can’t settle — market size,
+  competitors, credentials — go to Claude with live web search. Each verdict
+  includes reasoning and citations. “Unsupported” is a valid answer.
 
-**3. Evidence engine** (`vcbrain/evidence.py` + `vcbrain/adjudicate.py`) — The heart of
-the system, two lines of defense:
-   - **Deterministic first** (never overturned): recompute what's recomputable — if the
-     deck says "40% MoM growth" and the data room has the monthly revenue series, we
-     recompute the CAGR ourselves (accounting-firm move: numbers are checked, not
-     believed) — and cross-check every stated figure against the founder's own metrics.
-   - **LLM adjudication second** (live mode): every claim the deterministic layer can't
-     rule on goes to Claude in one batched call with the full data room and **live web
-     search** — market sizes, competitor claims, team backgrounds, certifications. Each
-     verdict comes back with a status, reasoning, and **source citations** that render
-     in the memo. A skeptical-analyst prompt makes "unsupported" a legitimate answer, so
-     the model doesn't bless what it can't check. If the call fails, heuristic evidence
-     stands — the pipeline never dies mid-demo.
-   Each claim exits with a status, a confidence grade, and (live) citations.
+**4. Scoring** — Claude scores the deal as an investment-committee partner using
+the audited evidence and hard metrics across six dimensions (team, traction,
+market, product, economics, integrity). Decision bands are fixed in product
+logic: ≥70 invest, 50–70 invest with conditions, &lt;50 decline. Offline / mock
+mode uses a rule-based fallback so the product still runs without an API key.
 
-**4. Scoring model** (`vcbrain/scoring.py`) — **Claude as the IC partner** in live mode.
-Given the audited evidence table + hard metrics, the model returns six weighted dimension
-scores (team 20%, traction 25%, market 15%, product 10%, economics 20%, integrity 10%),
-an integrity multiplier (0.70–1.00), a composite, conditions, key risks, and a written
-summary. Decision bands are enforced in code (≥70 INVEST / 50–70 INVEST-WITH-CONDITIONS /
-&lt;50 DECLINE) so the LLM cannot invent a fourth outcome. Mock mode (and LLM failure)
-falls back to the original deterministic rule scorer — same `Decision` shape, so demos
-and tests never die mid-run.
-
-**5. Memo generator** (`vcbrain/memo.py`) — Emits `decision.json` (machine-readable, with the
-full audit trail) and `dashboard.html` (single-file IC memo: decision, score breakdown,
-claim-by-claim evidence table, risks, conditions).
+**5. Memo** — Produces a machine-readable decision record and a single-file
+dashboard: verdict, score breakdown, claim-by-claim evidence, risks, and
+follow-up questions for the founder.
 
 ## The 24-hour promise
 
-The pipeline itself runs in **minutes**. The 24-hour window in the challenge is for the
-human-in-the-loop layer: automated follow-up questions to the founder (generated in the memo
-as "conditions"), reference calls, and partner sign-off. AiriBrain's job is to make the human
-hours count by doing the 100% of mechanical verification up front.
+The automated pass runs in minutes. The challenge’s 24-hour window is for the
+human layer — founder follow-ups, reference calls, and partner sign-off.
+AiriBrain’s job is to finish the mechanical verification first so those hours
+are spent on judgment, not spreadsheet archaeology.
 
-## Running it
+## Run it
 
 ```bash
 pip install -r requirements.txt
 
-# Web UI (the demo): submit materials, watch the audit stream, get the memo inline.
+# Web app (recommended for demo)
 python -m vcbrain.webapp          # → http://localhost:5001
-# "Load sample — Parsely AI" pre-fills the form; "Run audit" does the rest.
 
-# CLI, mock mode — full pipeline on the bundled sample startup, no API key needed:
+# CLI — offline / mock (no API key)
 python -m vcbrain.pipeline samples/parsely_ai --mock -o output/
 
-# Live mode — set ANTHROPIC_API_KEY: Claude extracts the claims, and adjudicates
-# everything the deterministic layer can't rule on, with live web search + citations:
+# CLI — live (Claude + web search + IC scoring)
 export ANTHROPIC_API_KEY=sk-ant-...
 python -m vcbrain.pipeline samples/parsely_ai -o output/
 
-# Tests (includes a stubbed-client suite proving the live LLM path end-to-end):
+# Tests
 pytest tests/ -q
 ```
 
-Outputs land in `output/`: `decision.json` + `dashboard.html`.
+Outputs: `output/decision.json` and `output/dashboard.html`.
+Sample data rooms live under [`samples/`](samples/).
