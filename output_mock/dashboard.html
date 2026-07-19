@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VC Brain — Parsely AI decision memo</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:#fcfcfb; --page:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --blue:#2a78d6; --blue-track:#cde2fb; --claimed:#eb6834;
+    --good:#0ca30c; --warn:#c98500; --crit:#d03b3b; --corr:#2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:#1a1a19; --page:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+      --blue:#3987e5; --blue-track:#184f95; --claimed:#d95926;
+      --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --corr:#3987e5;
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .viz-root { background:var(--page); color:var(--ink-1); min-height:100vh;
+               padding:32px 20px; }
+  .wrap { max-width:960px; margin:0 auto; display:grid; gap:16px; }
+  .card { background:var(--surface-1); border:1px solid var(--border);
+           border-radius:12px; padding:20px 24px; }
+  h1 { font-size:20px; font-weight:650; }
+  h2 { font-size:13px; font-weight:600; color:var(--ink-2);
+        text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px; }
+  .sub { color:var(--ink-2); font-size:14px; margin-top:4px; }
+  .head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+  .hero { text-align:right; }
+  .hero .num { font-size:52px; font-weight:650; line-height:1; }
+  .hero .den { font-size:16px; color:var(--ink-3); font-weight:400; }
+  .hero .cap { font-size:12px; color:var(--ink-2); margin-top:2px; }
+  .decision { display:inline-flex; align-items:center; gap:8px; margin-top:10px;
+               font-weight:650; font-size:14px; padding:6px 12px; border-radius:8px;
+               border:1.5px solid; }
+  .tone-good { color:var(--good); border-color:var(--good); }
+  .tone-warn { color:var(--warn); border-color:var(--warn); }
+  .tone-crit { color:var(--crit); border-color:var(--crit); }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
+  .tile { background:var(--surface-1); border:1px solid var(--border);
+           border-radius:12px; padding:14px 16px; font:inherit; color:inherit;
+           text-align:left; cursor:pointer; }
+  .tile:hover { border-color:var(--ink-3); }
+  .tile.active { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+  .tile .lab { font-size:12px; color:var(--ink-2); }
+  .tile .val { font-size:26px; font-weight:600; margin-top:2px; }
+  .mode { font-size:11px; margin-top:8px; }
+  .mode-live { color:var(--good); }
+  .mode-mock { color:var(--ink-3); }
+  .finding { display:flex; gap:12px; align-items:flex-start; padding:10px 0;
+              border-bottom:1px solid var(--grid); }
+  .finding:last-of-type { border-bottom:none; }
+  .delta { color:var(--crit); }
+  .hint-line { font-size:12px; color:var(--ink-3); margin-top:10px; }
+  .conf { font-size:10px; color:var(--ink-3); margin-top:4px; }
+  .legend { display:flex; gap:18px; font-size:12px; color:var(--ink-2); margin-bottom:8px; }
+  .key { display:inline-flex; align-items:center; gap:6px; }
+  .swatch { width:14px; height:3px; border-radius:2px; display:inline-block; }
+  .swatch-actual { background:var(--blue); }
+  .swatch-claimed { background:var(--claimed); }
+  .dim { margin-bottom:14px; }
+  .dim-head { display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .dim-val { font-weight:600; }
+  .dim-den, .dim-wt { color:var(--ink-3); font-weight:400; font-size:11px; }
+  .dim-wt { margin-left:6px; }
+  .track { height:10px; border-radius:5px; background:var(--blue-track); overflow:hidden; }
+  .fill { height:100%; background:var(--blue); border-radius:0 5px 5px 0; }
+  details { margin-top:4px; }
+  summary { font-size:11px; color:var(--ink-3); cursor:pointer; }
+  details ul { margin:6px 0 0 16px; font-size:12px; color:var(--ink-2); display:grid; gap:3px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+        color:var(--ink-3); font-weight:600; padding:6px 10px 8px 0; border-bottom:1px solid var(--grid); }
+  td { padding:10px 10px 10px 0; border-bottom:1px solid var(--grid); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:color-mix(in srgb, var(--ink-1) 3%, transparent); }
+  .row-bad td { background:color-mix(in srgb, var(--crit) 6%, transparent); }
+  .mono { font-variant-numeric:tabular-nums; color:var(--ink-3); font-size:12px; }
+  .claim-text { font-weight:550; }
+  .prov { font-size:11px; color:var(--ink-3); margin-top:3px; }
+  .detail { color:var(--ink-2); }
+  .sv { font-size:12px; margin-top:4px; color:var(--ink-2); }
+  .cites { margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; }
+  .cites a { font-size:11px; font-weight:600; color:var(--blue); text-decoration:none;
+              border:1px solid var(--border); border-radius:999px; padding:2px 9px; }
+  .cites a:hover { border-color:var(--blue); }
+  .chip { display:inline-flex; align-items:center; gap:5px; font-size:12px;
+           font-weight:600; padding:3px 9px; border-radius:999px; border:1.5px solid;
+           white-space:nowrap; }
+  .chip-icon { font-size:11px; }
+  .chip-verified { color:var(--good); border-color:var(--good); }
+  .chip-corroborated { color:var(--corr); border-color:var(--corr); }
+  .chip-unsupported { color:var(--warn); border-color:var(--warn); }
+  .chip-contradicted { color:var(--crit); border-color:var(--crit); }
+  ol,ul.plain { margin-left:18px; font-size:13px; color:var(--ink-2); display:grid; gap:8px; }
+  svg { width:100%; height:auto; display:block; }
+  .grid { stroke:var(--grid); stroke-width:1; }
+  .axis { stroke:var(--axis); stroke-width:1; }
+  .tick { fill:var(--ink-3); font-size:11px; font-family:inherit; }
+  .rev-line { stroke:var(--blue); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .claim-line { stroke:var(--claimed); stroke-width:2; stroke-linejoin:round;
+                 stroke-linecap:round; opacity:.85; }
+  .claim-label { fill:var(--ink-2); font-size:11px; font-weight:600; font-family:inherit; }
+  .end-dot { fill:var(--blue); stroke:var(--surface-1); stroke-width:2; }
+  .end-label { fill:var(--ink-1); font-size:12px; font-weight:600; font-family:inherit; }
+  .foot { font-size:11px; color:var(--ink-3); text-align:center; padding:8px 0 4px; }
+</style></head>
+<body><div class="viz-root"><div class="wrap">
+
+  <div class="card head">
+    <div>
+      <h1>Parsely AI</h1>
+      <div class="sub">AI bookkeeping-and-tax copilot for SMB accounting firms</div>
+      <div class="sub">Ask: $100,000 SAFE at $8M cap · Sources: company.json, deck.md, metrics.json, qa.json, revenue.csv</div>
+      <div class="decision tone-warn"><span>!</span>INVEST — WITH CONDITIONS
+        · $100,000</div>
+    </div>
+    <div class="hero">
+      <div class="num">58.8<span class="den">/100</span></div>
+      <div class="cap">composite · integrity ×0.84</div>
+      <div class="mode mode-mock">● mock — deterministic engine only (no LLM, no web search)</div>
+    </div>
+  </div>
+
+  <div class="card"><div style="font-size:14px; color:var(--ink-2)">15 claims audited — 7 verified, 2 corroborated, 6 open items. Composite 58.8/100 after a 0.84x integrity multiplier → INVEST WITH CONDITIONS.</div></div>
+
+  <div class="card"><h2>Top findings</h2><div class="finding"><span class="chip chip-contradicted"><span class="chip-icon">✕</span>Contradicted</span><div><div class="claim-text">Revenue growing 40% MoM since launch.</div><div class="detail">Deck states 40% MoM; geometric mean of the submitted 8-month revenue series computes to 21.0% MoM — disagrees with the founder&#x27;s own revenue series. <span class="delta">stated <b>40% MoM</b> → found <b>21.0% MoM</b></span></div></div></div><div class="hint-line">6 open item(s) routed to the founder question list below.</div></div>
+
+  <div class="tiles" id="tiles">
+    <button class="tile active" data-status=""><div class="lab">Claims audited</div><div class="val">15</div></button>
+    <button class="tile" data-status="verified"><div class="lab">Verified</div><div class="val">7</div></button>
+    <button class="tile" data-status="corroborated"><div class="lab">Corroborated</div><div class="val">2</div></button>
+    <button class="tile" data-status="unsupported"><div class="lab">Unsupported</div><div class="val">5</div></button>
+    <button class="tile" data-status="contradicted"><div class="lab">Contradicted</div><div class="val">1</div></button>
+  </div>
+
+  <div class="card"><h2>Score by dimension</h2>
+<div class="dim">
+  <div class="dim-head"><span>Team</span>
+    <span class="dim-val">45<span class="dim-den">/100</span>
+      <span class="dim-wt">w 20%</span></span></div>
+  <div class="track"><div class="fill" style="width:45%"></div></div>
+  <details><summary>rationale</summary><ul><li>C01-9c56 unsupported (45 pts): Founded by 2 CPAs and the ex-Intuit ML lead behind QuickBooks categorization.</li><li>C02-1693 unsupported (45 pts): Previously scaled a tax-prep SaaS to 4,000 accounting firms before exiting to Th</li></ul></details>
+</div>
+<div class="dim">
+  <div class="dim-head"><span>Traction</span>
+    <span class="dim-val">89<span class="dim-den">/100</span>
+      <span class="dim-wt">w 25%</span></span></div>
+  <div class="track"><div class="fill" style="width:89%"></div></div>
+  <details><summary>rationale</summary><ul><li>C03-7866 verified (100 pts): Hit $45,000 MRR in June 2026, all self-serve.</li><li>C04-201b verified (100 pts): 180 paying customers across 12 states.</li><li>C05-89c0 contradicted (0 pts): Revenue growing 40% MoM since launch.</li><li>C06-8369 corroborated (75 pts): 96% logo retention since January.</li><li>C07-23fe verified (100 pts): 6 pilots underway with top-100 accounting firms.</li><li>C15-d74c verified (100 pts): As of June we&#x27;re at $45,570 MRR, all self-serve.</li><li>Recomputed MoM growth 21.0% ≥ 15%: +10.</li></ul></details>
+</div>
+<div class="dim">
+  <div class="dim-head"><span>Market</span>
+    <span class="dim-val">60<span class="dim-den">/100</span>
+      <span class="dim-wt">w 15%</span></span></div>
+  <div class="track"><div class="fill" style="width:60%"></div></div>
+  <details><summary>rationale</summary><ul><li>C10-9347 corroborated (75 pts): $30B TAM in SMB accounting software, expanding as firms face a talent shortage.</li><li>C11-64bd unsupported (45 pts): The only platform that automates both bookkeeping and tax filing end-to-end for </li></ul></details>
+</div>
+<div class="dim">
+  <div class="dim-head"><span>Product</span>
+    <span class="dim-val">45<span class="dim-den">/100</span>
+      <span class="dim-wt">w 10%</span></span></div>
+  <div class="track"><div class="fill" style="width:45%"></div></div>
+  <details><summary>rationale</summary><ul><li>C08-bef4 unsupported (45 pts): 94% transaction categorization accuracy on real client ledgers.</li><li>C09-b77f unsupported (45 pts): SOC 2 Type II certified with full audit trail on every journal entry.</li></ul></details>
+</div>
+<div class="dim">
+  <div class="dim-head"><span>Economics</span>
+    <span class="dim-val">100<span class="dim-den">/100</span>
+      <span class="dim-wt">w 20%</span></span></div>
+  <div class="track"><div class="fill" style="width:100%"></div></div>
+  <details><summary>rationale</summary><ul><li>C12-a416 verified (100 pts): 78% gross margin at current scale.</li><li>C13-0e7a verified (100 pts): CAC of $1,400 with 5-month payback.</li><li>C14-0fd3 verified (100 pts): 14 months of runway post-raise.</li><li>Gross margin 78% ≥ 70% (software-grade): +10.</li><li>LTV/CAC 4.0x ≥ 3x: +10.</li></ul></details>
+</div>
+<div class="dim">
+  <div class="dim-head"><span>Integrity</span>
+    <span class="dim-val">48<span class="dim-den">/100</span>
+      <span class="dim-wt">w 10%</span></span></div>
+  <div class="track"><div class="fill" style="width:48%"></div></div>
+  <details><summary>rationale</summary><ul><li>15 claims audited: 1 contradicted (−35 each), 5/15 unsupported (−16.7, normalized by claim count).</li><li>Contradicted: C05-89c0 — Deck states 40% MoM; geometric mean of the submitted 8-month revenue series computes to 21.0% MoM — disagrees with the founder&#x27;s own revenue series.</li></ul></details>
+</div></div>
+
+  <div class="card"><h2>Submitted revenue series (basis for recomputation)</h2><div class="legend"><span class="key"><span class="swatch swatch-actual"></span>actual (submitted CSV)</span><span class="key"><span class="swatch swatch-claimed"></span>claimed trajectory (40% MoM)</span></div>
+<svg viewBox="0 0 640 230" role="img"
+     aria-label="Monthly revenue: actual submitted series vs claimed growth trajectory">
+  <line x1="56" y1="165.3" x2="564" y2="165.3" class="grid"/><line x1="56" y1="130.5" x2="564" y2="130.5" class="grid"/><line x1="56" y1="95.8" x2="564" y2="95.8" class="grid"/><line x1="56" y1="61.1" x2="564" y2="61.1" class="grid"/><line x1="56" y1="26.4" x2="564" y2="26.4" class="grid"/>
+  <line x1="56" y1="200" x2="564" y2="200" class="axis"/>
+  <text x="48" y="169.3" class="tick" text-anchor="end">10K</text><text x="48" y="134.5" class="tick" text-anchor="end">20K</text><text x="48" y="99.8" class="tick" text-anchor="end">30K</text><text x="48" y="65.1" class="tick" text-anchor="end">40K</text><text x="48" y="30.4" class="tick" text-anchor="end">50K</text><text x="56.0" y="222" class="tick" text-anchor="middle">Nov-25</text><text x="128.6" y="222" class="tick" text-anchor="middle">Dec-25</text><text x="201.1" y="222" class="tick" text-anchor="middle">Jan-26</text><text x="273.7" y="222" class="tick" text-anchor="middle">Feb-26</text><text x="346.3" y="222" class="tick" text-anchor="middle">Mar-26</text><text x="418.9" y="222" class="tick" text-anchor="middle">Apr-26</text><text x="491.4" y="222" class="tick" text-anchor="middle">May-26</text><text x="564.0" y="222" class="tick" text-anchor="middle">Jun-26</text>
+  <polyline points="56.0,158.3 128.6,141.7 201.1,118.3 273.7,85.6 346.3,39.9 371.1,18.0" fill="none" class="claim-line"/><text x="379.1" y="30" class="claim-label">claimed 40%/mo — off the chart</text>
+  <polyline points="56.0,158.3 128.6,149.6 201.1,139.0 273.7,126.2 346.3,110.7 418.9,91.9 491.4,69.2 564.0,41.7" fill="none" class="rev-line"/>
+  <circle cx="564.0" cy="41.7" r="6" class="end-dot"/>
+  <text x="576.0" y="45.7" class="end-label">$45,570</text>
+</svg></div>
+
+  <div class="card"><h2>Claim-by-claim evidence table</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+<tr data-status="unsupported" class="">
+  <td class="mono">C01-9c56</td>
+  <td><div class="claim-text">Founded by 2 CPAs and the ex-Intuit ML lead behind QuickBooks categorization.</div>
+      <div class="prov">deck · Team</div></td>
+  <td><span class="chip chip-unsupported"><span class="chip-icon">!</span>Unsupported</span>
+      <div class="conf">conf 50%</div></td>
+  <td><div class="detail">Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</div>
+      <div class="prov">no automated verifier applicable</div></td>
+</tr>
+<tr data-status="unsupported" class="">
+  <td class="mono">C02-1693</td>
+  <td><div class="claim-text">Previously scaled a tax-prep SaaS to 4,000 accounting firms before exiting to Thomson Reuters.</div>
+      <div class="prov">deck · Team</div></td>
+  <td><span class="chip chip-unsupported"><span class="chip-icon">!</span>Unsupported</span>
+      <div class="conf">conf 50%</div></td>
+  <td><div class="detail">Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</div>
+      <div class="prov">no automated verifier applicable</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C03-7866</td>
+  <td><div class="claim-text">Hit $45,000 MRR in June 2026, all self-serve.</div>
+      <div class="prov">deck · Traction</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states MRR ≈ 45000; submitted metrics file reports 45570 — matches the metrics file.</div><div class="sv">stated <b>45000</b> · found <b>45570</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C04-201b</td>
+  <td><div class="claim-text">180 paying customers across 12 states.</div>
+      <div class="prov">deck · Traction</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states paying customers ≈ 180; submitted metrics file reports 182 — matches the metrics file.</div><div class="sv">stated <b>180</b> · found <b>182</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="contradicted" class="row-bad">
+  <td class="mono">C05-89c0</td>
+  <td><div class="claim-text">Revenue growing 40% MoM since launch.</div>
+      <div class="prov">deck · Traction</div></td>
+  <td><span class="chip chip-contradicted"><span class="chip-icon">✕</span>Contradicted</span>
+      <div class="conf">conf 97%</div></td>
+  <td><div class="detail">Deck states 40% MoM; geometric mean of the submitted 8-month revenue series computes to 21.0% MoM — disagrees with the founder&#x27;s own revenue series.</div><div class="sv">stated <b>40% MoM</b> · found <b>21.0% MoM</b></div>
+      <div class="prov">recomputed from revenue.csv</div></td>
+</tr>
+<tr data-status="corroborated" class="">
+  <td class="mono">C06-8369</td>
+  <td><div class="claim-text">96% logo retention since January.</div>
+      <div class="prov">deck · Traction</div></td>
+  <td><span class="chip chip-corroborated"><span class="chip-icon">◐</span>Corroborated</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states logo retention ≈ 96; submitted metrics file reports 85 — close to the metrics file.</div><div class="sv">stated <b>96</b> · found <b>85</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C07-23fe</td>
+  <td><div class="claim-text">6 pilots underway with top-100 accounting firms.</div>
+      <div class="prov">deck · Traction</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states pilots ≈ 6; submitted metrics file reports 6 — matches the metrics file.</div><div class="sv">stated <b>6</b> · found <b>6</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="unsupported" class="">
+  <td class="mono">C08-bef4</td>
+  <td><div class="claim-text">94% transaction categorization accuracy on real client ledgers.</div>
+      <div class="prov">deck · Product</div></td>
+  <td><span class="chip chip-unsupported"><span class="chip-icon">!</span>Unsupported</span>
+      <div class="conf">conf 50%</div></td>
+  <td><div class="detail">Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</div>
+      <div class="prov">no automated verifier applicable</div></td>
+</tr>
+<tr data-status="unsupported" class="">
+  <td class="mono">C09-b77f</td>
+  <td><div class="claim-text">SOC 2 Type II certified with full audit trail on every journal entry.</div>
+      <div class="prov">deck · Product</div></td>
+  <td><span class="chip chip-unsupported"><span class="chip-icon">!</span>Unsupported</span>
+      <div class="conf">conf 50%</div></td>
+  <td><div class="detail">Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</div>
+      <div class="prov">no automated verifier applicable</div></td>
+</tr>
+<tr data-status="corroborated" class="">
+  <td class="mono">C10-9347</td>
+  <td><div class="claim-text">$30B TAM in SMB accounting software, expanding as firms face a talent shortage.</div>
+      <div class="prov">deck · Market</div></td>
+  <td><span class="chip chip-corroborated"><span class="chip-icon">◐</span>Corroborated</span>
+      <div class="conf">conf 70%</div></td>
+  <td><div class="detail">Claimed market size $30B vs reference $28.4B — in line with third-party estimates.</div><div class="sv">stated <b>$30B</b> · found <b>$28.4B</b></div>
+      <div class="prov">external reference — Grand View Research 2025 (curated ref table)</div></td>
+</tr>
+<tr data-status="unsupported" class="">
+  <td class="mono">C11-64bd</td>
+  <td><div class="claim-text">The only platform that automates both bookkeeping and tax filing end-to-end for SMB firms.</div>
+      <div class="prov">deck · Competition</div></td>
+  <td><span class="chip chip-unsupported"><span class="chip-icon">!</span>Unsupported</span>
+      <div class="conf">conf 60%</div></td>
+  <td><div class="detail">Absolute competitive claim; a quick landscape scan cannot prove a negative. Flagged for the founder-question list.</div>
+      <div class="prov">external scan</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C12-a416</td>
+  <td><div class="claim-text">78% gross margin at current scale.</div>
+      <div class="prov">deck · Economics · financial</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states gross margin ≈ 78; submitted metrics file reports 78 — matches the metrics file.</div><div class="sv">stated <b>78</b> · found <b>78</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C13-0e7a</td>
+  <td><div class="claim-text">CAC of $1,400 with 5-month payback.</div>
+      <div class="prov">deck · Economics · financial</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states CAC ≈ 1400; submitted metrics file reports 1450 — matches the metrics file.</div><div class="sv">stated <b>1400</b> · found <b>1450</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C14-0fd3</td>
+  <td><div class="claim-text">14 months of runway post-raise.</div>
+      <div class="prov">deck · Economics · financial</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states runway (months) ≈ 14; submitted metrics file reports 14 — matches the metrics file.</div><div class="sv">stated <b>14</b> · found <b>14</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr>
+<tr data-status="verified" class="">
+  <td class="mono">C15-d74c</td>
+  <td><div class="claim-text">As of June we&#x27;re at $45,570 MRR, all self-serve.</div>
+      <div class="prov">founder Q&amp;A · “What is your current MRR?” · traction</div></td>
+  <td><span class="chip chip-verified"><span class="chip-icon">✓</span>Verified</span>
+      <div class="conf">conf 90%</div></td>
+  <td><div class="detail">Deck states MRR ≈ 45570; submitted metrics file reports 45570 — matches the metrics file.</div><div class="sv">stated <b>45570</b> · found <b>45570</b></div>
+      <div class="prov">cross-checked vs metrics.json</div></td>
+</tr></tbody>
+    </table>
+  </div>
+
+  <div class="card"><h2>Conditions — auto-generated founder question list</h2><ol><li>[C01-9c56] Resolve: Founded by 2 CPAs and the ex-Intuit ML lead behind QuickBooks categorization. — Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</li><li>[C02-1693] Resolve: Previously scaled a tax-prep SaaS to 4,000 accounting firms before exiting to Thomson Reuters. — Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</li><li>[C05-89c0] Resolve: Revenue growing 40% MoM since launch. — Deck states 40% MoM; geometric mean of the submitted 8-month revenue series computes to 21.0% MoM — disagrees with the founder&#x27;s own revenue series.</li><li>[C08-bef4] Resolve: 94% transaction categorization accuracy on real client ledgers. — Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</li><li>[C09-b77f] Resolve: SOC 2 Type II certified with full audit trail on every journal entry. — Qualitative or externally-held claim; no in-window verification path. Routed to human follow-up (reference call / document request).</li><li>[C11-64bd] Resolve: The only platform that automates both bookkeeping and tax filing end-to-end for SMB firms. — Absolute competitive claim; a quick landscape scan cannot prove a negative. Flagged for the founder-question list.</li></ol></div>
+  <div class="card"><h2>Key risks</h2><ul class="plain"><li>C05-89c0 contradicted by evidence: Deck states 40% MoM; geometric mean of the submitted 8-month revenue series computes to 21.0% MoM — disagrees with the founder&#x27;s own revenue series.</li></ul></div>
+
+  <div class="foot">Generated by VC Brain (mock — deterministic engine only (no LLM, no web search)) · every line above traces to a
+    claim ID and a verification method · scoring model is deterministic and inspectable</div>
+<script>
+  document.querySelectorAll('#tiles .tile').forEach(t => t.addEventListener('click', () => {
+    const s = t.dataset.status;
+    document.querySelectorAll('#tiles .tile').forEach(x => x.classList.toggle('active', x === t));
+    document.querySelectorAll('tbody tr').forEach(r =>
+      r.style.display = (!s || r.dataset.status === s) ? '' : 'none');
+  }));
+</script>
+</div></div></body></html>
