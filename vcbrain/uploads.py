@@ -111,7 +111,7 @@ def parse_files(files) -> dict:
             else:
                 logger.warning("skipping unsupported upload: %s", name)
         except Exception:
-            logger.exception("failed to parse upload %s — skipping", name)
+            logger.exception("failed to parse upload %s - skipping", name)
 
     revenue_csv = ""
     if revenue:

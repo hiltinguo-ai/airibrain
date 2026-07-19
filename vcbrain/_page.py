@@ -1,19 +1,19 @@
-"""The AiriBrain app — three layers, warm and human.
+"""The AiriBrain app - three layers, warm and human.
 
-Layer 1 · DECISION — drop in a deck (PDF) + financials (Excel/CSV), get a verdict.
-Layer 2 · EVIDENCE — the proof behind the verdict.
-Layer 3 · ENGINE   — the algorithm, the live log, the raw data.
+Layer 1 · DECISION - drop in a deck (PDF) + financials (Excel/CSV), get a verdict.
+Layer 2 · EVIDENCE - the proof behind the verdict.
+Layer 3 · ENGINE   - the algorithm, the live log, the raw data.
 
 Design: warm paper, editorial serif headlines (Fraunces), handwritten notes
 (Caveat), tactile press-down buttons, sticky-note tiles with a slight tilt,
 playful spring animations (disabled under prefers-reduced-motion). The engine
-log is the one intentionally dark element — a real terminal inside a human page.
+log is the one intentionally dark element - a real terminal inside a human page.
 """
 
 PAGE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AiriBrain — evidence-backed decisions</title>
+<title>AiriBrain - evidence-backed decisions</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='15' fill='%232f5fe0'/%3E%3Cpath d='M19 45 L32 17 L45 45' fill='none' stroke='%23fff8ec' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M25.5 36.5 H38.5' fill='none' stroke='%23fff8ec' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='17' r='4.2' fill='%23fff8ec'/%3E%3Ccircle cx='19' cy='45' r='4.2' fill='%23fff8ec'/%3E%3Ccircle cx='45' cy='45' r='4.2' fill='%23fff8ec'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -356,7 +356,7 @@ PAGE = r"""<!DOCTYPE html>
   <div class="layer on" id="layer1">
     <div class="hello pop">
       <h1>Show us the deal.<br>We'll <em>check the math</em>.</h1>
-      <div class="tag">every founder claim, audited — no vibes, just receipts ↓</div>
+      <div class="tag">every founder claim, audited - no vibes, just receipts ↓</div>
     </div>
     <div class="cockpit">
       <div class="card pop" style="animation-delay:.08s">
@@ -381,7 +381,7 @@ PAGE = r"""<!DOCTYPE html>
             <button class="btn btn-primary" id="run">Run audit →</button>
             <button class="btn" id="load">Try the sample</button>
           </div>
-          <div class="row"><span class="hint">Every claim in the materials gets audited —
+          <div class="row"><span class="hint">Every claim in the materials gets audited -
             recomputed from the raw numbers first, checked by AI + web search second.</span></div>
         </div>
       </div>
@@ -418,7 +418,7 @@ PAGE = r"""<!DOCTYPE html>
     <div class="stack">
       <div class="card">
         <div class="card-head">Audit stream <span class="sub">raw log, timestamped</span></div>
-        <div id="console"><div class="hint" style="padding:6px 2px">No run yet — the full machine log streams here during an audit.</div></div>
+        <div id="console"><div class="hint" style="padding:6px 2px">No run yet - the full machine log streams here during an audit.</div></div>
       </div>
 
       <div class="card">
@@ -426,7 +426,7 @@ PAGE = r"""<!DOCTYPE html>
         <div class="card-body spec">
           <div class="stepsv">
             <div class="stepv"><div><b>Recompute the numbers.</b> Anything derivable from the
-              founder's own raw data is recomputed — growth from the revenue file, stated
+              founder's own raw data is recomputed - growth from the revenue file, stated
               figures against the metrics sheet. Pure arithmetic, never overturned later.
               Numbers are checked, not believed.</div></div>
             <div class="stepv"><div><b>Cross-check the documents.</b> Each quantitative claim is
@@ -435,7 +435,7 @@ PAGE = r"""<!DOCTYPE html>
               <span class="chip chip-contradicted">✕ CONTRADICTED</span> · between →
               <span class="chip chip-corroborated">◐ CORROBORATED</span>.</div></div>
             <div class="stepv"><div><b>Ask AI + the open web</b> (live mode). Claims the rules
-              can't reach — market sizes, competitors, team backgrounds — go to Claude with
+              can't reach - market sizes, competitors, team backgrounds - go to Claude with
               the full data room and live web search; verdicts come back with reasoning and
               citations. <span class="chip chip-unsupported">! UNSUPPORTED</span> stays a
               legitimate answer, so nothing gets blessed on vibes.</div></div>
@@ -446,7 +446,7 @@ PAGE = r"""<!DOCTYPE html>
       <div class="card">
         <div class="card-head">The scoring model <span class="sub">Claude IC partner · evidence-grounded</span></div>
         <div class="card-body spec">
-          In <b>live mode</b>, Claude scores the deal as an investment-committee partner —
+          In <b>live mode</b>, Claude scores the deal as an investment-committee partner -
           reading the full audited evidence table and hard metrics, then returning six
           weighted dimension scores, an integrity multiplier, conditions, risks, and a
           written summary. The LLM does <i>not</i> get to invent a fourth outcome:
@@ -454,9 +454,9 @@ PAGE = r"""<!DOCTYPE html>
             <th>team</th><th>traction</th><th>market</th><th>product</th><th>economics</th><th>integrity</th></tr>
             <tr><td>20%</td><td>25%</td><td>15%</td><td>10%</td><td>20%</td><td>10%</td></tr>
           </table>
-          <span class="f">bands enforced in code: ≥70 INVEST · 50–70 CONDITIONS · &lt;50 DECLINE</span>
-          <span class="f">integrity_multiplier clamped to 0.70–1.00 · composite from LLM, band from rules</span>
-          Mock mode (and any LLM failure) falls back to the deterministic rule scorer —
+          <span class="f">bands enforced in code: ≥70 INVEST · 50-70 CONDITIONS · &lt;50 DECLINE</span>
+          <span class="f">integrity_multiplier clamped to 0.70-1.00 · composite from LLM, band from rules</span>
+          Mock mode (and any LLM failure) falls back to the deterministic rule scorer -
           same Decision shape, so the demo never dies mid-run.
         </div>
       </div>
@@ -594,11 +594,11 @@ $('run').onclick = async () => {
     setStage('evidence');
     const bad = d.status === 'contradicted';
     $('lastline').innerHTML = '<span class="st st-' + d.status + '">' + ICON[d.status] + ' ' +
-      d.status + '</span> — ' + esc(d.text);
+      d.status + '</span> - ' + esc(d.text);
     cline('<span class="stage-tag">EVIDENCE</span>' +
          '<span class="st st-' + d.status + '">' + ICON[d.status] + ' ' +
          d.status.toUpperCase().padEnd(12,' ') + '</span> ' +
-         '<span class="msg' + (bad ? ' msg-hi' : '') + '">' + esc(sid(d.id)) + ' — ' + esc(d.text) + '</span>',
+         '<span class="msg' + (bad ? ' msg-hi' : '') + '">' + esc(sid(d.id)) + ' - ' + esc(d.text) + '</span>',
          bad ? 'flash-bad' : '');
   });
   es.addEventListener('done', async e => {
@@ -689,8 +689,8 @@ function renderL1() {
     '<div class="dims">' + dims + '</div>' +
     findings +
     '<div class="hint" style="padding:0 22px 22px">Deep-dive: ' +
-    '<a href="#" onclick="showLayer(2);return false">layer 2 — evidence</a> · ' +
-    '<a href="#" onclick="showLayer(3);return false">layer 3 — engine</a> · ' +
+    '<a href="#" onclick="showLayer(2);return false">layer 2 - evidence</a> · ' +
+    '<a href="#" onclick="showLayer(3);return false">layer 3 - engine</a> · ' +
     '<a href="' + RESULT.memo_url + '" target="_blank">standalone memo ↗</a></div>';
 
   // animations: ring sweep + odometer + meters + stamp
@@ -713,7 +713,7 @@ function gotoEvidence(f) { renderL2(FILTER = f); showLayer(2); }
 /* ---------- layer 2 render ---------- */
 function chartSVG() {
   const S = RESULT.revenue_series;
-  if (!S || S.length < 2) return '<div class="hint">No revenue series submitted — nothing to recompute against.</div>';
+  if (!S || S.length < 2) return '<div class="hint">No revenue series submitted - nothing to recompute against.</div>';
   const W=940,H=250,PL=58,PR=90,PT=20,PB=32;
   const revs = S.map(p => p.revenue), top = Math.max(...revs) * 1.15, n = S.length;
   const x = i => PL + (W-PL-PR) * (i/(n-1));
@@ -744,7 +744,7 @@ function chartSVG() {
     }
     const line = cpts.map(p => p[0]+','+p[1]).join(' ');
     const lab = exit
-      ? '<text x="'+Math.min(exit[0]+8, W-6)+'" y="'+(PT+12)+'" fill="var(--dim)" font-size="11" font-weight="650" font-family="var(--mono)">claimed '+pct+'%/mo — off the chart</text>'
+      ? '<text x="'+Math.min(exit[0]+8, W-6)+'" y="'+(PT+12)+'" fill="var(--dim)" font-size="11" font-weight="650" font-family="var(--mono)">claimed '+pct+'%/mo - off the chart</text>'
       : '';
     claimed = '<polyline points="'+line+'" fill="none" stroke="var(--claimed)" stroke-width="2" opacity=".85"/>' + lab;
     legendClaimed = '<span class="key"><span class="swatch" style="background:var(--claimed)"></span>claimed trajectory ('+pct+'% MoM)</span>';

@@ -1,4 +1,4 @@
-"""Stage 1 — Ingest: normalize a submission folder into a Submission object.
+"""Stage 1 - Ingest: normalize a submission folder into a Submission object.
 
 Expected folder layout:
     submission/

@@ -355,7 +355,7 @@ def test_dashboard_renders_citations(tmp_path, sub):
     assert 'href="https://example.com/ref"' in html
     assert "Example Ref" in html
     assert str(decision.composite) in html
-    assert "live — Claude extraction" in html          # mode banner (§4.6)
+    assert "live - Claude extraction" in html          # mode banner (§4.6)
     assert "Top findings" in html                      # contradictions above the fold (§4.1)
     assert "claimed 40%/mo" in html                    # ghost trajectory on chart (§4.3)
     assert 'data-status="contradicted"' in html        # filterable table rows (§4.2)

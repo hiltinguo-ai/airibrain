@@ -1,4 +1,4 @@
-"""Stage 2 — Claim extraction.
+"""Stage 2 - Claim extraction.
 
 Live mode: Claude extracts and types every checkable assertion in the materials.
 Mock mode: a deterministic rule-based extractor (keyword + number heuristics) so the
@@ -117,7 +117,7 @@ def _live_extract(sub: Submission) -> list[Claim]:
     from .llm import complete_json
 
     materials = (
-        f"Company: {sub.company} — {sub.one_liner}\nAsk: {sub.ask}\n\n"
+        f"Company: {sub.company} - {sub.one_liner}\nAsk: {sub.ask}\n\n"
         f"--- DECK ---\n{sub.deck_text}\n\n"
         f"--- HEADLINE METRICS ---\n{json.dumps(sub.metrics, indent=2)}\n\n"
         f"--- FOUNDER Q&A ---\n{json.dumps(sub.qa, indent=2)}"
@@ -134,7 +134,7 @@ def _live_extract(sub: Submission) -> list[Claim]:
             ctype = ClaimType(str(c.get("claim_type", "")).strip().lower())
         except ValueError:
             ctype = _classify(text)  # off-enum value from the model → heuristic
-            logger.warning("off-enum claim_type %r — classified as %s",
+            logger.warning("off-enum claim_type %r - classified as %s",
                            c.get("claim_type"), ctype.value)
         claims.append(
             Claim(
@@ -146,7 +146,7 @@ def _live_extract(sub: Submission) -> list[Claim]:
             )
         )
     if not claims:
-        logger.warning("live extraction returned no usable claims — "
+        logger.warning("live extraction returned no usable claims - "
                        "falling back to deterministic extractor")
         return _mock_extract(sub)
     return claims

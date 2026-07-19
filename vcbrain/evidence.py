@@ -1,12 +1,12 @@
-"""Stage 3 — Evidence engine: audit every claim.
+"""Stage 3 - Evidence engine: audit every claim.
 
 Verifier order (first one that can rule, rules):
-  1. RECOMPUTE  — if the claim states a figure we can recompute from raw data
+  1. RECOMPUTE  - if the claim states a figure we can recompute from raw data
                   (e.g. MoM growth vs. the revenue.csv series), recompute it.
-  2. CROSS-DOC  — compare stated figures against the founder's own metrics file.
-  3. EXTERNAL   — market/competition claims checked against a reference table
+  2. CROSS-DOC  - compare stated figures against the founder's own metrics file.
+  3. EXTERNAL   - market/competition claims checked against a reference table
                   (mock) or a web-search pass (live).
-  4. Otherwise  — UNSUPPORTED.
+  4. Otherwise  - UNSUPPORTED.
 
 This is the accounting-firm move: numbers are checked, not believed.
 """
@@ -43,7 +43,7 @@ def _first_number(text: str) -> float | None:
 
 
 def _number_near(text: str, words: list[str]) -> float | None:
-    """The number closest to any of the keywords — so in
+    """The number closest to any of the keywords - so in
     'Top 50 firms use us, retention 95%' the retention check picks 95, not 50."""
     low = text.lower().replace(",", "")
     nums = [(m.start(), float(m.group(1)))
@@ -98,7 +98,7 @@ def _verify_growth(claim: Claim, sub: Submission) -> Evidence | None:
         detail=(
             f"Deck states {stated:.0f}% MoM; geometric mean of the submitted "
             f"{len(sub.revenue_series)}-month revenue series computes to "
-            f"{computed:.1f}% MoM — {verdict}."
+            f"{computed:.1f}% MoM - {verdict}."
         ),
         stated_value=f"{stated:.0f}% MoM",
         computed_value=f"{computed:.1f}% MoM",
@@ -145,7 +145,7 @@ def _verify_cross_doc(claim: Claim, sub: Submission) -> Evidence | None:
             method="cross-checked vs metrics.json",
             detail=(
                 f"Deck states {label} ≈ {stated:g}; submitted metrics file reports "
-                f"{actual:g} — {verdict}."
+                f"{actual:g} - {verdict}."
             ),
             stated_value=f"{stated:g}",
             computed_value=f"{actual:g}",
@@ -172,9 +172,9 @@ def _verify_external(claim: Claim, sub: Submission) -> Evidence | None:
             return Evidence(
                 claim_id=claim.id,
                 status=status,
-                method=f"external reference — {ref['source']}",
+                method=f"external reference - {ref['source']}",
                 detail=(
-                    f"Claimed market size ${stated:g}B vs reference ${ref['value_usd_b']}B — {verdict}."
+                    f"Claimed market size ${stated:g}B vs reference ${ref['value_usd_b']}B - {verdict}."
                 ),
                 stated_value=f"${stated:g}B",
                 computed_value=f"${ref['value_usd_b']}B",
@@ -240,8 +240,8 @@ def run_evidence(claims: list[Claim], sub: Submission, mock: bool = False,
 
     Deterministic verifiers rule first and are never overturned. In live mode,
     claims they left UNSUPPORTED are batch-adjudicated by Claude with web
-    search (real judgments with citations). In mock mode — or if the LLM call
-    fails — the heuristic evidence stands, so the pipeline never dies mid-demo,
+    search (real judgments with citations). In mock mode - or if the LLM call
+    fails - the heuristic evidence stands, so the pipeline never dies mid-demo,
     and the reason is logged and surfaced via `on_note(msg)`.
 
     `on_adjudicate(n_pending)` is an optional progress callback for UIs.
@@ -249,7 +249,7 @@ def run_evidence(claims: list[Claim], sub: Submission, mock: bool = False,
     from . import llm
 
     if not mock and not llm.live_available():
-        logger.warning("live evidence requested but no API key — mock path used")
+        logger.warning("live evidence requested but no API key - mock path used")
         mock = True
 
     table = run_deterministic(claims, sub, use_reference_table=mock)
@@ -267,7 +267,7 @@ def run_evidence(claims: list[Claim], sub: Submission, mock: bool = False,
         from .adjudicate import adjudicate
         verdicts = adjudicate(pending, sub)
     except Exception as exc:
-        msg = f"adjudication skipped ({type(exc).__name__}: {exc}) — heuristic evidence stands"
+        msg = f"adjudication skipped ({type(exc).__name__}: {exc}) - heuristic evidence stands"
         logger.exception("adjudication failed")
         if on_note:
             on_note(msg)

@@ -1,4 +1,4 @@
-"""VC Brain — evidence-backed $100K investment decisions.
+"""VC Brain - evidence-backed $100K investment decisions.
 
 Pipeline: ingest -> claims -> evidence -> scoring -> memo
 """

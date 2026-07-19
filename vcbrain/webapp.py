@@ -116,13 +116,13 @@ def api_stream(run_id: str) -> Response:
         pace = 0.28 if mock else 0.0  # cosmetic pacing only when instant anyway
         try:
             emit("log", {"stage": "config",
-                         "msg": "engine: " + ("mock — deterministic only"
-                                              if mock else "live — Claude + web search")})
+                         "msg": "engine: " + ("mock - deterministic only"
+                                              if mock else "live - Claude + web search")})
             emit("log", {"stage": "ingest", "msg": "normalizing submitted materials…"})
             sub = _build_submission(payload)
             time.sleep(pace)
             emit("log", {"stage": "ingest",
-                         "msg": f"{sub.company} — {len(sub.revenue_series)} months of revenue data, "
+                         "msg": f"{sub.company} - {len(sub.revenue_series)} months of revenue data, "
                                 f"{len(sub.metrics)} headline metrics"})
 
             emit("log", {"stage": "claims",
@@ -131,7 +131,7 @@ def api_stream(run_id: str) -> Response:
             claims = extract_claims(sub, mock=mock)
             time.sleep(pace)
             emit("log", {"stage": "claims",
-                         "msg": f"{len(claims)} claims extracted — every one will be audited"})
+                         "msg": f"{len(claims)} claims extracted - every one will be audited"})
 
             emit("log", {"stage": "evidence",
                          "msg": "auditing: recompute → cross-document → "
@@ -141,7 +141,7 @@ def api_stream(run_id: str) -> Response:
                 claims, sub, mock=mock,
                 on_adjudicate=lambda n: emit("log", {
                     "stage": "evidence",
-                    "msg": f"{n} claim(s) beyond deterministic reach — "
+                    "msg": f"{n} claim(s) beyond deterministic reach - "
                            f"adjudicating with Claude + web search (this is the slow part)"}),
                 on_note=lambda m: emit("log", {"stage": "evidence", "msg": f"NOTE: {m}"}),
             )
@@ -151,7 +151,7 @@ def api_stream(run_id: str) -> Response:
                 emit("claim", {"id": e.claim_id, "status": e.status.value,
                                "text": by_id[e.claim_id].text, "method": e.method})
             n_bad = sum(1 for e in evidence if e.status == EvidenceStatus.CONTRADICTED)
-            emit("log", {"stage": "evidence", "msg": f"audit complete — {n_bad} contradiction(s) found"})
+            emit("log", {"stage": "evidence", "msg": f"audit complete - {n_bad} contradiction(s) found"})
 
             emit("log", {"stage": "scoring",
                          "msg": ("scoring with Claude IC partner…" if not mock

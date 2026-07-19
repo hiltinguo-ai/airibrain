@@ -10,6 +10,6 @@ services:
       - key: PYTHON_VERSION
         value: 3.13.4
       # Set in the Render dashboard to enable live mode (Claude + web search).
-      # Leave unset and the app runs in mock mode — safe, zero API cost.
+      # Leave unset and the app runs in mock mode - safe, zero API cost.
       - key: ANTHROPIC_API_KEY
         sync: false

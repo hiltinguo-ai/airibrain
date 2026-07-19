@@ -1,9 +1,9 @@
-"""LLM adjudication — the second line of the evidence engine.
+"""LLM adjudication - the second line of the evidence engine.
 
 The deterministic verifiers rule on everything they can recompute or cross-check.
 Whatever exits that stage as UNSUPPORTED goes to Claude for real judgment: the
 full data room plus live web search, a skeptical-analyst prompt, and a verdict
-per claim with citations. Deterministic findings are never overturned here —
+per claim with citations. Deterministic findings are never overturned here -
 recomputed numbers outrank model opinion by design.
 """
 
@@ -28,10 +28,10 @@ competitors, team backgrounds, certifications, app-store presence). Search \
 before judging; cite what you find.
 - "verified" = independent evidence confirms it. "corroborated" = partial or \
 secondary support. "contradicted" = evidence disagrees. "unsupported" = you \
-genuinely found nothing either way — this is a legitimate answer; do NOT guess.
+genuinely found nothing either way - this is a legitimate answer; do NOT guess.
 - Founder materials are marketing. Absence of evidence for a bold claim is a \
 finding, not an inconvenience.
-- Keep each detail to 1–3 sentences, concrete, naming what you checked.
+- Keep each detail to 1-3 sentences, concrete, naming what you checked.
 
 === FOUNDER DATA ROOM ===
 {data_room}
@@ -50,7 +50,7 @@ Every claim listed above must appear exactly once in verdicts."""
 
 def _data_room(sub: Submission) -> str:
     return (
-        f"Company: {sub.company} — {sub.one_liner}\nAsk: {sub.ask}\n\n"
+        f"Company: {sub.company} - {sub.one_liner}\nAsk: {sub.ask}\n\n"
         f"--- DECK ---\n{sub.deck_text}\n\n"
         f"--- HEADLINE METRICS ---\n{json.dumps(sub.metrics, indent=2)}\n\n"
         f"--- REVENUE SERIES ---\n"
@@ -62,7 +62,7 @@ def _data_room(sub: Submission) -> str:
 def adjudicate(pending: list[Claim], sub: Submission) -> dict[str, Evidence]:
     """Batch-judge the claims deterministic verifiers couldn't rule on.
 
-    Returns {claim_id: Evidence} — partial acceptance: whatever valid verdicts
+    Returns {claim_id: Evidence} - partial acceptance: whatever valid verdicts
     came back are kept, missing ones are the caller's problem (they stay
     unsupported). Raises only on transport/parse failure of the whole call.
     """

@@ -1,6 +1,6 @@
-"""Stage 4 — Scoring model.
+"""Stage 4 - Scoring model.
 
-Live mode: Claude acts as the investment-committee partner — reads the full
+Live mode: Claude acts as the investment-committee partner - reads the full
 evidence table + hard metrics and returns weighted dimension scores, an integrity
 multiplier, a composite, and a decision band with written rationale.
 
@@ -55,7 +55,7 @@ _DIM_ORDER = ("team", "traction", "market", "product", "economics", "integrity")
 SCORING_PROMPT = """You are the investment-committee partner inside AiriBrain, an \
 evidence-backed diligence engine. A deterministic layer has already audited every \
 founder claim (recompute / cross-doc / web search). Your job is to SCORE the deal \
-like a skeptical early-stage IC — using the evidence table as ground truth, not the \
+like a skeptical early-stage IC - using the evidence table as ground truth, not the \
 founder's marketing.
 
 Rules:
@@ -73,7 +73,7 @@ market 0.15, product 0.10, economics 0.20, integrity 0.10.
 - composite should equal (approximately) Σ(dimension_score × weight) × integrity_multiplier.
 
 === COMPANY ===
-{company} — {one_liner}
+{company} - {one_liner}
 Ask: {ask}
 
 === HEADLINE METRICS ===
@@ -95,7 +95,7 @@ Return ONLY JSON:
  "check_size": 0|100000,
  "conditions": ["founder questions / open items"],
  "key_risks": ["..."],
- "summary": "2–3 sentence IC memo summary"}}
+ "summary": "2-3 sentence IC memo summary"}}
 Every dimension listed above must appear exactly once.
 """
 
@@ -111,7 +111,7 @@ def _evidence_base(dim: str, claims: list[Claim], table: dict[str, Evidence]) ->
         pts.append(p)
         rat.append(f"{c.id.split('-')[0]} {ev.status.value} ({p:.0f} pts): {c.text[:80]}")
     if not pts:
-        return 50.0, [f"No checkable {dim} claims — neutral 50."]
+        return 50.0, [f"No checkable {dim} claims - neutral 50."]
     return sum(pts) / len(pts), rat
 
 
@@ -170,7 +170,7 @@ def _integrity(claims: list[Claim], table: dict[str, Evidence]) -> tuple[float, 
     """Contradictions are a per-incident penalty (a caught lie is a caught lie).
     The unsupported penalty is normalized by claim count, so a chattier
     extractor that surfaces more unverifiable claims doesn't mechanically
-    change the verdict — only the *fraction* of unverifiable claims does."""
+    change the verdict - only the *fraction* of unverifiable claims does."""
     n = max(1, len(claims))
     contradicted = [c for c in claims if table[c.id].status == EvidenceStatus.CONTRADICTED]
     unsupported = [c for c in claims if table[c.id].status == EvidenceStatus.UNSUPPORTED]
@@ -182,7 +182,7 @@ def _integrity(claims: list[Claim], table: dict[str, Evidence]) -> tuple[float, 
         f"normalized by claim count)."
     ]
     for c in contradicted:
-        rat.append(f"Contradicted: {c.id.split('-')[0]} — {table[c.id].detail}")
+        rat.append(f"Contradicted: {c.id.split('-')[0]} - {table[c.id].detail}")
     return score, rat
 
 
@@ -204,7 +204,7 @@ def _band(composite: float) -> tuple[str, int]:
 
 def score_deterministic(sub: Submission, claims: list[Claim],
                         evidence: list[Evidence]) -> Decision:
-    """Rule-based scorer — used in mock mode and as live-mode fallback."""
+    """Rule-based scorer - used in mock mode and as live-mode fallback."""
     table = {e.claim_id: e for e in evidence}
     dims: list[DimensionScore] = []
 
@@ -229,7 +229,7 @@ def score_deterministic(sub: Submission, claims: list[Claim],
     decision, check = _band(composite)
 
     conditions = [
-        f"[{_sid(c.id)}] Resolve: {c.text} — {table[c.id].detail}"
+        f"[{_sid(c.id)}] Resolve: {c.text} - {table[c.id].detail}"
         for c in claims
         if table[c.id].status in (EvidenceStatus.CONTRADICTED, EvidenceStatus.UNSUPPORTED)
     ]
@@ -244,7 +244,7 @@ def score_deterministic(sub: Submission, claims: list[Claim],
     verified = sum(1 for e in evidence if e.status == EvidenceStatus.VERIFIED)
     corr = sum(1 for e in evidence if e.status == EvidenceStatus.CORROBORATED)
     summary = (
-        f"{len(claims)} claims audited — {verified} verified, {corr} corroborated, "
+        f"{len(claims)} claims audited - {verified} verified, {corr} corroborated, "
         f"{len(conditions)} open items. Composite {composite}/100 after a "
         f"{multiplier:.2f}x integrity multiplier → {decision.replace('_', ' ')}."
     )
@@ -367,5 +367,5 @@ def score(sub: Submission, claims: list[Claim], evidence: list[Evidence],
     try:
         return _score_live(sub, claims, evidence)
     except Exception as exc:
-        logger.warning("LLM scoring failed (%s) — falling back to deterministic scorer", exc)
+        logger.warning("LLM scoring failed (%s) - falling back to deterministic scorer", exc)
         return score_deterministic(sub, claims, evidence)

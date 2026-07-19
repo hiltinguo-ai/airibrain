@@ -35,15 +35,15 @@ def run(folder: str, out_dir: str, mock: bool) -> int:
     mock = mock or not llm.live_available()
     if live_requested and mock:
         _log("config", "WARNING: live mode requested but ANTHROPIC_API_KEY is not "
-                       "set — running MOCK (deterministic extractors, no web search)")
+                       "set - running MOCK (deterministic extractors, no web search)")
     mode = "mock" if mock else "live"
     _log("config", f"engine mode: "
-                   + ("mock — deterministic only" if mock
-                      else "live — Claude claims + evidence + IC scoring"))
+                   + ("mock - deterministic only" if mock
+                      else "live - Claude claims + evidence + IC scoring"))
 
     _log("ingest", f"loading submission from {folder}")
     sub = load_submission(folder)
-    _log("ingest", f"{sub.company} — {len(sub.source_files)} files, "
+    _log("ingest", f"{sub.company} - {len(sub.source_files)} files, "
                    f"{len(sub.revenue_series)} months of revenue data")
 
     _log("claims", "extracting checkable assertions"
@@ -55,14 +55,14 @@ def run(folder: str, out_dir: str, mock: bool) -> int:
     evidence = run_evidence(
         claims, sub, mock=mock,
         on_adjudicate=lambda n: _log(
-            "evidence", f"{n} claim(s) beyond deterministic reach — "
+            "evidence", f"{n} claim(s) beyond deterministic reach - "
                         f"adjudicating with Claude + web search"),
         on_note=lambda m: _log("evidence", f"NOTE: {m}"),
     )
     for e in evidence:
         mark = {"verified": "✓", "corroborated": "◐",
                 "unsupported": "!", "contradicted": "✕"}[e.status.value]
-        _log("evidence", f"  {mark} {e.claim_id} {e.status.value:<12} — {e.method}")
+        _log("evidence", f"  {mark} {e.claim_id} {e.status.value:<12} - {e.method}")
 
     n_bad = sum(1 for e in evidence if e.status == EvidenceStatus.CONTRADICTED)
     _log("evidence", f"done: {n_bad} contradiction(s) found")
