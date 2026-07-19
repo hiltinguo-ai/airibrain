@@ -1,11 +1,17 @@
-"""Stage 4 — Deterministic scoring model. Pure Python, zero LLM.
+"""Stage 4 — Scoring model.
 
-Given the claim/evidence table plus the metrics file, produce six dimension
-scores, an integrity multiplier, a composite, and a decision band. Every
-adjustment is recorded as a rationale line so the memo can show its work.
+Live mode: Claude acts as the investment-committee partner — reads the full
+evidence table + hard metrics and returns weighted dimension scores, an integrity
+multiplier, a composite, and a decision band with written rationale.
+
+Mock mode (or LLM failure): falls back to a deterministic pure-Python scorer so
+demos and tests never die mid-run. Same Decision shape either way.
 """
 
 from __future__ import annotations
+
+import json
+import logging
 
 from .models import (
     Claim,
@@ -16,6 +22,8 @@ from .models import (
     EvidenceStatus,
     Submission,
 )
+
+logger = logging.getLogger("vcbrain.scoring")
 
 WEIGHTS = {
     "team": 0.20,
@@ -41,6 +49,55 @@ _DIM_FOR_TYPE = {
     ClaimType.FINANCIAL: "economics",
     ClaimType.COMPETITION: "market",
 }
+
+_DIM_ORDER = ("team", "traction", "market", "product", "economics", "integrity")
+
+SCORING_PROMPT = """You are the investment-committee partner inside AiriBrain, an \
+evidence-backed diligence engine. A deterministic layer has already audited every \
+founder claim (recompute / cross-doc / web search). Your job is to SCORE the deal \
+like a skeptical early-stage IC — using the evidence table as ground truth, not the \
+founder's marketing.
+
+Rules:
+- Contradicted claims are severe: a founder who inflates one number likely inflates others.
+- Unsupported claims are open diligence items, not free passes.
+- Hard metrics (margin, LTV/CAC, runway, recomputed growth) matter.
+- Be concrete. Every rationale line must name a claim ID or a metric.
+- Decision bands (mandatory):
+    composite ≥ 70 → INVEST (check_size 100000)
+    50 ≤ composite < 70 → INVEST_WITH_CONDITIONS (check_size 100000)
+    composite < 50 → DECLINE (check_size 0)
+- integrity_multiplier must be between 0.70 and 1.00 inclusive.
+- Return exactly these six dimensions with the given weights: team 0.20, traction 0.25, \
+market 0.15, product 0.10, economics 0.20, integrity 0.10.
+- composite should equal (approximately) Σ(dimension_score × weight) × integrity_multiplier.
+
+=== COMPANY ===
+{company} — {one_liner}
+Ask: {ask}
+
+=== HEADLINE METRICS ===
+{metrics}
+
+=== REVENUE SERIES ===
+{revenue}
+
+=== EVIDENCE TABLE ===
+{evidence_block}
+
+Return ONLY JSON:
+{{"dimensions": [{{"dimension": "team|traction|market|product|economics|integrity",
+  "score": 0-100,
+  "rationale": ["...", "..."]}}],
+ "integrity_multiplier": 0.70-1.00,
+ "composite": 0-100,
+ "decision": "INVEST|INVEST_WITH_CONDITIONS|DECLINE",
+ "check_size": 0|100000,
+ "conditions": ["founder questions / open items"],
+ "key_risks": ["..."],
+ "summary": "2–3 sentence IC memo summary"}}
+Every dimension listed above must appear exactly once.
+"""
 
 
 def _evidence_base(dim: str, claims: list[Claim], table: dict[str, Evidence]) -> tuple[float, list[str]]:
@@ -133,7 +190,21 @@ def _clamp(x: float) -> float:
     return max(0.0, min(100.0, x))
 
 
-def score(sub: Submission, claims: list[Claim], evidence: list[Evidence]) -> Decision:
+def _sid(cid: str) -> str:
+    return cid.split("-")[0]
+
+
+def _band(composite: float) -> tuple[str, int]:
+    if composite >= 70:
+        return "INVEST", 100_000
+    if composite >= 50:
+        return "INVEST_WITH_CONDITIONS", 100_000
+    return "DECLINE", 0
+
+
+def score_deterministic(sub: Submission, claims: list[Claim],
+                        evidence: list[Evidence]) -> Decision:
+    """Rule-based scorer — used in mock mode and as live-mode fallback."""
     table = {e.claim_id: e for e in evidence}
     dims: list[DimensionScore] = []
 
@@ -155,17 +226,7 @@ def score(sub: Submission, claims: list[Claim], evidence: list[Evidence]) -> Dec
     # a founder who inflates one number inflates others.
     multiplier = 0.70 + 0.30 * (integ / 100.0)
     composite = round(weighted * multiplier, 1)
-
-    # Bands: ≥70 invest · 50–70 invest with conditions · <50 DECLINE (no check).
-    if composite >= 70:
-        decision, check = "INVEST", 100_000
-    elif composite >= 50:
-        decision, check = "INVEST_WITH_CONDITIONS", 100_000
-    else:
-        decision, check = "DECLINE", 0
-
-    def _sid(cid: str) -> str:  # display form: "C01-70a5" → "C01"
-        return cid.split("-")[0]
+    decision, check = _band(composite)
 
     conditions = [
         f"[{_sid(c.id)}] Resolve: {c.text} — {table[c.id].detail}"
@@ -199,3 +260,112 @@ def score(sub: Submission, claims: list[Claim], evidence: list[Evidence]) -> Dec
         key_risks=risks,
         summary=summary,
     )
+
+
+def _evidence_block(claims: list[Claim], evidence: list[Evidence]) -> str:
+    by_id = {e.claim_id: e for e in evidence}
+    lines = []
+    for c in claims:
+        e = by_id[c.id]
+        stated = f" | stated={e.stated_value} found={e.computed_value}" if e.stated_value else ""
+        cites = ""
+        if e.citations:
+            cites = " | sources=" + "; ".join(
+                (x.get("url") or "") for x in e.citations[:3] if x.get("url"))
+        lines.append(
+            f"{c.id} [{c.claim_type.value}] {e.status.value.upper()} "
+            f"(conf {e.confidence:.2f}) via {e.method}\n"
+            f"  claim: {c.text}\n"
+            f"  evidence: {e.detail}{stated}{cites}"
+        )
+    return "\n".join(lines)
+
+
+def _score_live(sub: Submission, claims: list[Claim],
+                evidence: list[Evidence]) -> Decision:
+    from .llm import complete_json
+
+    revenue = "\n".join(
+        f"{p['month']}: ${p['revenue']:,.0f}" for p in sub.revenue_series
+    ) or "(none)"
+    payload, _ = complete_json(
+        SCORING_PROMPT.format(
+            company=sub.company,
+            one_liner=sub.one_liner,
+            ask=sub.ask,
+            metrics=json.dumps(sub.metrics, indent=2),
+            revenue=revenue,
+            evidence_block=_evidence_block(claims, evidence),
+        ),
+        web_search=False,
+        max_tokens=4000,
+    )
+
+    by_dim = {}
+    for d in payload.get("dimensions") or []:
+        name = str(d.get("dimension", "")).lower().strip()
+        if name not in WEIGHTS:
+            continue
+        rats = d.get("rationale") or []
+        if isinstance(rats, str):
+            rats = [rats]
+        by_dim[name] = DimensionScore(
+            dimension=name,
+            score=_clamp(float(d.get("score", 50))),
+            weight=WEIGHTS[name],
+            rationale=[str(r) for r in rats] or [f"LLM score for {name}."],
+        )
+    missing = [n for n in _DIM_ORDER if n not in by_dim]
+    if missing:
+        raise RuntimeError(f"LLM scorer omitted dimensions: {missing}")
+
+    dims = [by_dim[n] for n in _DIM_ORDER]
+    integ = by_dim["integrity"].score
+    multiplier = float(payload.get("integrity_multiplier",
+                                   0.70 + 0.30 * (integ / 100.0)))
+    multiplier = max(0.70, min(1.00, multiplier))
+
+    composite = payload.get("composite")
+    if composite is None:
+        composite = sum(d.score * d.weight for d in dims) * multiplier
+    composite = round(_clamp(float(composite)), 1)
+
+    # Bands are enforced in code so the model can't invent a fourth outcome.
+    decision, check = _band(composite)
+    raw_decision = str(payload.get("decision", "")).upper().replace(" ", "_")
+    if raw_decision in ("INVEST", "INVEST_WITH_CONDITIONS", "DECLINE") and raw_decision != decision:
+        logger.info("LLM decision %s overridden by band rules → %s (composite %.1f)",
+                    raw_decision, decision, composite)
+
+    conditions = [str(x) for x in (payload.get("conditions") or []) if str(x).strip()]
+    risks = [str(x) for x in (payload.get("key_risks") or []) if str(x).strip()]
+    summary = str(payload.get("summary") or "").strip() or (
+        f"LLM IC score {composite}/100 (integrity ×{multiplier:.2f}) → "
+        f"{decision.replace('_', ' ')}."
+    )
+
+    return Decision(
+        company=sub.company,
+        composite=composite,
+        integrity_multiplier=round(multiplier, 2),
+        decision=decision,
+        check_size=check,
+        dimensions=dims,
+        conditions=conditions,
+        key_risks=risks,
+        summary=summary,
+    )
+
+
+def score(sub: Submission, claims: list[Claim], evidence: list[Evidence],
+          mock: bool = False) -> Decision:
+    """Score the deal. Live → Claude IC partner; mock / no key / failure → deterministic."""
+    from .llm import live_available
+
+    if mock or not live_available():
+        return score_deterministic(sub, claims, evidence)
+    try:
+        return _score_live(sub, claims, evidence)
+    except Exception as exc:
+        logger.warning("LLM scoring failed (%s) — falling back to deterministic scorer", exc)
+        return score_deterministic(sub, claims, evidence)

@@ -25,7 +25,7 @@ from vcbrain.evidence import run_deterministic, run_evidence  # noqa: E402
 from vcbrain.ingest import load_submission  # noqa: E402
 from vcbrain.memo import write_dashboard  # noqa: E402
 from vcbrain.models import EvidenceStatus  # noqa: E402
-from vcbrain.scoring import score  # noqa: E402
+from vcbrain.scoring import score, score_deterministic  # noqa: E402
 
 SAMPLE = ROOT / "samples" / "parsely_ai"
 
@@ -78,7 +78,7 @@ def test_mock_pipeline_regression(sub):
     assert statuses.count(EvidenceStatus.VERIFIED) == 7
     assert statuses.count(EvidenceStatus.CORROBORATED) == 2
     assert statuses.count(EvidenceStatus.CONTRADICTED) == 1
-    decision = score(sub, claims, evidence)
+    decision = score(sub, claims, evidence, mock=True)
     assert decision.decision == "INVEST_WITH_CONDITIONS"
     assert decision.composite == 58.8
     assert decision.check_size == 100_000
@@ -301,16 +301,44 @@ def test_upload_parsing_csv_and_xlsx(tmp_path):
 
 def test_decline_band_label(sub):
     """Sub-50 composite must read DECLINE, not the ambiguous 'PASS'."""
-    from vcbrain.scoring import score as _score
-
     claims = extract_claims(sub, mock=True)
     evidence = run_deterministic(claims, sub)
     for e in evidence:  # sabotage: contradict everything → score collapses
         e.status = EvidenceStatus.CONTRADICTED
-    d = _score(sub, claims, evidence)
+    d = score_deterministic(sub, claims, evidence)
     assert d.composite < 50
     assert d.decision == "DECLINE"
     assert d.check_size == 0
+
+
+def test_live_scoring_uses_llm(sub):
+    """Live scoring path calls Claude and maps the IC JSON into a Decision."""
+    payload = {
+        "dimensions": [
+            {"dimension": "team", "score": 60, "rationale": ["C01 unsupported"]},
+            {"dimension": "traction", "score": 40, "rationale": ["C05 contradicted growth"]},
+            {"dimension": "market", "score": 55, "rationale": ["TAM roughly in range"]},
+            {"dimension": "product", "score": 50, "rationale": ["thin product evidence"]},
+            {"dimension": "economics", "score": 70, "rationale": ["gross margin software-grade"]},
+            {"dimension": "integrity", "score": 30, "rationale": ["one hard contradiction"]},
+        ],
+        "integrity_multiplier": 0.79,
+        "composite": 42.0,
+        "decision": "DECLINE",
+        "check_size": 0,
+        "conditions": ["Resolve the MoM growth contradiction"],
+        "key_risks": ["Founder inflated growth"],
+        "summary": "Integrity failure drives a decline.",
+    }
+    llm.set_client_factory(lambda: FakeClient([[_text_block(json.dumps(payload))]]))
+    claims = extract_claims(sub, mock=True)
+    evidence = run_deterministic(claims, sub)
+    d = score(sub, claims, evidence, mock=False)
+    assert d.decision == "DECLINE"
+    assert d.composite == 42.0
+    assert d.integrity_multiplier == 0.79
+    assert any(x.dimension == "integrity" and x.score == 30 for x in d.dimensions)
+    assert "growth" in d.conditions[0].lower() or "MoM" in d.conditions[0]
 
 
 # ------------------------------------------------------------ rendering tests
@@ -320,7 +348,7 @@ def test_dashboard_renders_citations(tmp_path, sub):
     evidence = run_deterministic(claims, sub)
     target = next(e for e in evidence if e.status == EvidenceStatus.UNSUPPORTED)
     target.citations = [{"url": "https://example.com/ref", "title": "Example Ref"}]
-    decision = score(sub, claims, evidence)
+    decision = score(sub, claims, evidence, mock=True)
     out = tmp_path / "dash.html"
     write_dashboard(out, sub, claims, evidence, decision, mode="live")
     html = out.read_text()

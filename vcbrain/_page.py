@@ -401,21 +401,20 @@ PAGE = r"""<!DOCTYPE html>
       </div>
 
       <div class="card">
-        <div class="card-head">The scoring model <span class="sub">deterministic · zero LLM · inspectable</span></div>
+        <div class="card-head">The scoring model <span class="sub">Claude IC partner · evidence-grounded</span></div>
         <div class="card-body spec">
-          Six dimensions, each 0–100 from the evidence table
-          (<b>verified 100 · corroborated 75 · unsupported 45 · contradicted 0</b>, averaged),
-          plus hard-metric adjustments (gross margin ≥70% +10 · LTV/CAC ≥3× +10 ·
-          recomputed MoM ≥15% +10 · retention ≥90% +5 · short runway −10).
+          In <b>live mode</b>, Claude scores the deal as an investment-committee partner —
+          reading the full audited evidence table and hard metrics, then returning six
+          weighted dimension scores, an integrity multiplier, conditions, risks, and a
+          written summary. The LLM does <i>not</i> get to invent a fourth outcome:
           <table class="wtable"><tr>
             <th>team</th><th>traction</th><th>market</th><th>product</th><th>economics</th><th>integrity</th></tr>
             <tr><td>20%</td><td>25%</td><td>15%</td><td>10%</td><td>20%</td><td>10%</td></tr>
           </table>
-          <span class="f">integrity = 100 − 35 × contradicted − 50 × (unsupported ⁄ total claims)</span>
-          <span class="f">composite = Σ(dimension × weight) × (0.70 + 0.30 × integrity⁄100)</span>
-          Integrity counts twice on purpose — as a dimension <i>and</i> as a trust multiplier:
-          a founder who inflates one number inflates others.
-          Bands: <b>≥70 INVEST</b> · <b>50–70 INVEST WITH CONDITIONS</b> · <b>&lt;50 DECLINE</b>.
+          <span class="f">bands enforced in code: ≥70 INVEST · 50–70 CONDITIONS · &lt;50 DECLINE</span>
+          <span class="f">integrity_multiplier clamped to 0.70–1.00 · composite from LLM, band from rules</span>
+          Mock mode (and any LLM failure) falls back to the deterministic rule scorer —
+          same Decision shape, so the demo never dies mid-run.
         </div>
       </div>
 

@@ -21,7 +21,7 @@ to be audited**:
 
 1. Every quantitative claim is extracted and typed (revenue, growth, retention, market size, team).
 2. Each claim gets an **evidence status**: `verified`, `corroborated`, `unsupported`, or `contradicted`.
-3. Scoring is **deterministic** given the evidence table — the LLM gathers and grades evidence,
+3. Scoring is an **LLM IC partner** grounded in the evidence table — Claude weighs the audited
    but the final score comes from a transparent weighted model anyone can inspect.
 4. The output memo shows its work: claim → evidence → adjustment. An associate (or the
    founder) can challenge any single line.
@@ -39,9 +39,9 @@ an underwriting system.
  │ 1. INGEST    │ → │ 2. CLAIMS    │ → │ 3. EVIDENCE  │ → │ 4. SCORING   │ → │ 5. MEMO      │
  │ normalize    │   │ extract &    │   │ verify each  │   │ deterministic│   │ decision +   │
  │ all inputs   │   │ type claims  │   │ claim, grade │   │ weighted     │   │ audit trail  │
- │ to one doc   │   │ (LLM)        │   │ (LLM + web + │   │ model (pure  │   │ (JSON + HTML │
- │ bundle       │   │              │   │ financial    │   │ Python, no   │   │ dashboard)   │
- │              │   │              │   │ recompute)   │   │ LLM)         │   │              │
+ │ to one doc   │   │ (LLM)        │   │ (LLM + web + │   │ (LLM IC      │   │ (JSON + HTML │
+ │ bundle       │   │              │   │ financial    │   │ partner;     │   │ dashboard)   │
+ │              │   │              │   │ recompute)   │   │ mock=rules)  │   │              │
  └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
 ```
 
@@ -71,17 +71,14 @@ the system, two lines of defense:
      stands — the pipeline never dies mid-demo.
    Each claim exits with a status, a confidence grade, and (live) citations.
 
-**4. Scoring model** (`vcbrain/scoring.py`) — Pure Python, zero LLM. Six dimensions
-(team 20%, traction 25%, market 15%, product 10%, economics 20%, integrity 10%) each scored
-0–100 from the evidence table via explicit rules. Contradicted claims don't just lower a
-dimension — they feed an **integrity score** that acts as a multiplier, because a founder
-who inflates one number inflates others. Two deliberate design choices, documented so
-nobody mistakes them for bugs: (a) integrity **double-counts** — it is both a 10% weighted
-dimension and a 0.70–1.00 multiplier on the whole composite; a caught lie should hurt
-twice. (b) the unsupported-claim penalty is **normalized by claim count**, so a chattier
-extractor that surfaces more unverifiable claims doesn't mechanically change the verdict —
-only the fraction of unverifiable claims does. Output: composite score, decision band
-(≥70 INVEST / 50–70 INVEST-WITH-CONDITIONS / &lt;50 DECLINE), and check size logic.
+**4. Scoring model** (`vcbrain/scoring.py`) — **Claude as the IC partner** in live mode.
+Given the audited evidence table + hard metrics, the model returns six weighted dimension
+scores (team 20%, traction 25%, market 15%, product 10%, economics 20%, integrity 10%),
+an integrity multiplier (0.70–1.00), a composite, conditions, key risks, and a written
+summary. Decision bands are enforced in code (≥70 INVEST / 50–70 INVEST-WITH-CONDITIONS /
+&lt;50 DECLINE) so the LLM cannot invent a fourth outcome. Mock mode (and LLM failure)
+falls back to the original deterministic rule scorer — same `Decision` shape, so demos
+and tests never die mid-run.
 
 **5. Memo generator** (`vcbrain/memo.py`) — Emits `decision.json` (machine-readable, with the
 full audit trail) and `dashboard.html` (single-file IC memo: decision, score breakdown,
@@ -116,3 +113,25 @@ pytest tests/ -q
 ```
 
 Outputs land in `output/`: `decision.json` + `dashboard.html`.
+
+## Demo script (3 minutes)
+
+1. **Set the trap (20s):** "Every AI-VC demo summarizes the deck. The deck is marketing.
+   We audit it."
+2. **Run it live (60s):** in the web UI, load the sample startup and hit Run audit —
+   the evidence engine streams claim-by-claim: 15 claims extracted → 9 verified/
+   corroborated → 5 unsupported → 1 contradicted.
+3. **The money moment (60s):** open the dashboard. Point at the contradicted claim — deck
+   says 40% MoM growth, *their own metrics file* computes to 21%. Show the integrity
+   multiplier dragging the score down and the decision flip to INVEST-WITH-CONDITIONS with
+   an auto-generated founder question list.
+4. **Close (20s):** "Evidence-backed means every line of this memo is challengeable. That's
+   how you deploy $100K in 24 hours without lighting it on fire."
+
+## Honest limitations (say these before judges ask)
+
+- Mock mode's external checks are a curated reference table; real web-search verification
+  requires live mode (an API key at demo time).
+- No reference calls / founder background checks — flagged as human follow-ups in the memo.
+- Scoring weights are opinionated defaults; a fund would calibrate them against its own
+  historical deal outcomes (that calibration loop is the real product).

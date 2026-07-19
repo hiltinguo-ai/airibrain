@@ -39,7 +39,7 @@ def run(folder: str, out_dir: str, mock: bool) -> int:
     mode = "mock" if mock else "live"
     _log("config", f"engine mode: "
                    + ("mock — deterministic only" if mock
-                      else "live — Claude extraction + web-search adjudication"))
+                      else "live — Claude claims + evidence + IC scoring"))
 
     _log("ingest", f"loading submission from {folder}")
     sub = load_submission(folder)
@@ -67,8 +67,9 @@ def run(folder: str, out_dir: str, mock: bool) -> int:
     n_bad = sum(1 for e in evidence if e.status == EvidenceStatus.CONTRADICTED)
     _log("evidence", f"done: {n_bad} contradiction(s) found")
 
-    _log("scoring", "running deterministic scoring model")
-    decision = score(sub, claims, evidence)
+    _log("scoring", "scoring with Claude IC partner" if not mock
+                   else "running deterministic scoring model (mock)")
+    decision = score(sub, claims, evidence, mock=mock)
     _log("scoring", f"composite {decision.composite}/100 "
                     f"(integrity ×{decision.integrity_multiplier}) → {decision.decision}")
 

@@ -153,8 +153,10 @@ def api_stream(run_id: str) -> Response:
             n_bad = sum(1 for e in evidence if e.status == EvidenceStatus.CONTRADICTED)
             emit("log", {"stage": "evidence", "msg": f"audit complete — {n_bad} contradiction(s) found"})
 
-            emit("log", {"stage": "scoring", "msg": "running deterministic scoring model (no LLM in the loop)"})
-            decision = score(sub, claims, evidence)
+            emit("log", {"stage": "scoring",
+                         "msg": ("scoring with Claude IC partner…" if not mock
+                                 else "running deterministic scoring model (mock)…")})
+            decision = score(sub, claims, evidence, mock=mock)
             time.sleep(pace * 2)
             emit("log", {"stage": "scoring",
                          "msg": f"composite {decision.composite}/100 · integrity ×{decision.integrity_multiplier}"})
