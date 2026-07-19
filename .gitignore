@@ -7,3 +7,6 @@ output/*.png
 # Hackathon video scripts — keep local / zip only, not public repo
 submission/VIDEO_SCRIPTS.md
 submission/VIDEO_SCRIPTS.docx
+
+# Hackathon submission docs — local only
+submission/
