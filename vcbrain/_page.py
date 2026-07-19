@@ -51,13 +51,6 @@ PAGE = r"""<!DOCTYPE html>
           font-weight:700; font-size:21px; letter-spacing:-.01em; }
   .logo svg { transition:transform .4s cubic-bezier(.3,1.6,.4,1); }
   .logo:hover svg { transform:rotate(-8deg) scale(1.06); }
-  .mode { display:flex; align-items:center; gap:7px; font-family:var(--hand);
-          font-size:16px; color:var(--dim); transform:rotate(-1.5deg); }
-  .led { width:9px; height:9px; border-radius:50%; }
-  .led-live { background:var(--good); animation:blink 2.4s ease-in-out infinite; }
-  .led-mock { background:var(--warn); }
-  @keyframes blink { 50% { opacity:.35; } }
-
   .layers { margin-left:auto; display:flex; gap:6px; }
   .lbtn { font:inherit; font-size:13.5px; font-weight:650; padding:9px 16px 11px;
           border:none; background:transparent; color:var(--dim); cursor:pointer;
@@ -344,7 +337,6 @@ PAGE = r"""<!DOCTYPE html>
         <circle cx="54" cy="20" r="1.7" fill="#fff8ec" opacity=".7"/>
       </svg>
       <span>AiriBrain</span></div>
-    <div class="mode"><span class="led __LEDCLASS__"></span>__MODE__</div>
     <div class="layers">
       <button class="lbtn on" id="lb1" onclick="showLayer(1)">1 · Decision</button>
       <button class="lbtn" id="lb2" onclick="showLayer(2)" disabled>2 · Evidence</button>

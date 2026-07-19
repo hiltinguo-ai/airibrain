@@ -226,15 +226,9 @@ def result(run_id: str) -> Response:
 @app.get("/")
 def index() -> Response:
     from ._page import PAGE
-    from .llm import live_available
 
     sample = _load_sample()
-    live = live_available()
-    mode = ("LIVE · claude + web search" if live
-            else "MOCK · deterministic (set ANTHROPIC_API_KEY)")
-    page = (PAGE.replace("__SAMPLE__", json.dumps(sample))
-                .replace("__MODE__", mode)
-                .replace("__LEDCLASS__", "led-live" if live else "led-mock"))
+    page = PAGE.replace("__SAMPLE__", json.dumps(sample))
     return Response(page, mimetype="text/html")
 
 
