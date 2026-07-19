@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: airibrain
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # gthread + no timeout: the audit stream (SSE) holds a connection ~60s in live mode
+    startCommand: gunicorn --worker-class gthread --threads 8 --timeout 0 -b 0.0.0.0:$PORT vcbrain.webapp:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      # Set in the Render dashboard to enable live mode (Claude + web search).
+      # Leave unset and the app runs in mock mode — safe, zero API cost.
+      - key: ANTHROPIC_API_KEY
+        sync: false
