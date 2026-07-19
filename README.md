@@ -113,25 +113,3 @@ pytest tests/ -q
 ```
 
 Outputs land in `output/`: `decision.json` + `dashboard.html`.
-
-## Demo script (3 minutes)
-
-1. **Set the trap (20s):** "Every AI-VC demo summarizes the deck. The deck is marketing.
-   We audit it."
-2. **Run it live (60s):** in the web UI, load the sample startup and hit Run audit —
-   the evidence engine streams claim-by-claim: 15 claims extracted → 9 verified/
-   corroborated → 5 unsupported → 1 contradicted.
-3. **The money moment (60s):** open the dashboard. Point at the contradicted claim — deck
-   says 40% MoM growth, *their own metrics file* computes to 21%. Show the integrity
-   multiplier dragging the score down and the decision flip to INVEST-WITH-CONDITIONS with
-   an auto-generated founder question list.
-4. **Close (20s):** "Evidence-backed means every line of this memo is challengeable. That's
-   how you deploy $100K in 24 hours without lighting it on fire."
-
-## Honest limitations (say these before judges ask)
-
-- Mock mode's external checks are a curated reference table; real web-search verification
-  requires live mode (an API key at demo time).
-- No reference calls / founder background checks — flagged as human follow-ups in the memo.
-- Scoring weights are opinionated defaults; a fund would calibrate them against its own
-  historical deal outcomes (that calibration loop is the real product).
